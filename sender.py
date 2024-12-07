@@ -70,7 +70,7 @@ class VideoStreamer:
 
 if __name__ == "__main__":
     # 수신 측 IP와 포트 설정
-    TARGET_IP = "xxx.xx.x.xx"   # 드론이나 수신 장치의 IP 주소
+    TARGET_IP = "172.30.1.31"   # 드론이나 수신 장치의 IP 주소
     TARGET_PORT = 7777          # 수신 포트 (dji.py의 TelloVideo 포트와 일치해야 함)
     FPS = 30                    # 전송할 프레임 속도 (초당 30 프레임)
 

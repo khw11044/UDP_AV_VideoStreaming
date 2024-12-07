@@ -6,12 +6,11 @@ from typing import Optional
 import av
 import numpy as np
 
-class VideoStreamException(Exception):
-    """비디오 스트림 관련 예외 클래스"""
+class TelloException(Exception):
     pass
 
-class VideoStreamer:
-    """영상 스트림을 수신하고 PyAV를 사용해 프레임을 읽어오는 범용 클래스"""
+class TelloVideo:
+    """클래스는 드론 영상 스트림을 수신하고 PyAV를 사용해 프레임을 읽어옵니다."""
 
     # 비디오 스트림 관련 설정
     VS_UDP_IP = '0.0.0.0'
@@ -22,7 +21,7 @@ class VideoStreamer:
     HANDLER = logging.StreamHandler()
     FORMATTER = logging.Formatter('[%(levelname)s] %(filename)s - %(lineno)d - %(message)s')
     HANDLER.setFormatter(FORMATTER)
-    LOGGER = logging.getLogger('video_streamer')
+    LOGGER = logging.getLogger('tello_video')
     LOGGER.addHandler(HANDLER)
     LOGGER.setLevel(logging.INFO)
 
@@ -30,34 +29,34 @@ class VideoStreamer:
         self.host = host
         self.vs_udp_port = vs_udp_port
         self.stream_on = False
-        self.frame_reader: Optional['FrameReader'] = None
-        self.LOGGER.info("VideoStreamer initialized. Host: '{}', Port: '{}'".format(self.host, self.vs_udp_port))
+        self.background_frame_read: Optional['BackgroundFrameRead'] = None
+        self.LOGGER.info("TelloVideo initialized. Host: '{}', Port: '{}'".format(self.host, self.vs_udp_port))
 
     def get_udp_video_address(self) -> str:
-        """영상 스트림 UDP 주소 반환"""
+        """드론의 비디오 스트림 UDP 주소 반환"""
         address_schema = 'udp://@{ip}:{port}'
         return address_schema.format(ip=self.VS_UDP_IP, port=self.vs_udp_port)
 
     def start_video_stream(self):
-        """영상 스트림 수신 시작"""
-        if self.frame_reader is None:
+        """드론 비디오 스트림 수신 시작"""
+        if self.background_frame_read is None:
             address = self.get_udp_video_address()
-            self.frame_reader = FrameReader(address)
-            self.frame_reader.start()
+            self.background_frame_read = BackgroundFrameRead(address)
+            self.background_frame_read.start()
             self.stream_on = True
             self.LOGGER.info("Video stream started.")
         else:
             self.LOGGER.info("Video stream is already running.")
 
     def stop_video_stream(self):
-        """영상 스트림 수신 종료"""
-        if self.frame_reader is not None:
-            self.frame_reader.stop()
-            self.frame_reader = None
+        """드론 비디오 스트림 수신 종료"""
+        if self.background_frame_read is not None:
+            self.background_frame_read.stop()
+            self.background_frame_read = None
             self.stream_on = False
             self.LOGGER.info("Video stream stopped.")
 
-class FrameReader:
+class BackgroundFrameRead:
     """비디오 프레임을 백그라운드에서 읽어오는 클래스"""
     def __init__(self, address: str):
         self.address = address
@@ -73,7 +72,7 @@ class FrameReader:
     def update_frame(self):
         """프레임 업데이트 작업을 수행하는 스레드 함수"""
         try:
-            with av.open(self.address, 'r', timeout=(VideoStreamer.FRAME_GRAB_TIMEOUT, None)) as container:
+            with av.open(self.address, 'r', timeout=(TelloVideo.FRAME_GRAB_TIMEOUT, None)) as container:
                 for frame in container.decode(video=0):
                     # 최신 프레임만 덮어쓰기
                     with self.lock:
@@ -83,7 +82,7 @@ class FrameReader:
                         container.close()
                         break
         except av.error.ExitError:
-            raise VideoStreamException('Not enough frames for decoding, try again or increase video FPS.')
+            raise TelloException('Not enough frames for decoding, try again or increase video FPS.')
 
     @property
     def latest_frame(self):
