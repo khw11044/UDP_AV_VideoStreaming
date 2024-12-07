@@ -3,6 +3,9 @@ import time
 from util.streamer import TelloVideo
 import numpy as np 
 
+from ultralytics import YOLO
+
+model = YOLO("yolo11n.pt")
 def main():
     # TelloVideo 객체 생성
     video_stream = TelloVideo(host='0.0.0.0', vs_udp_port=7777)
@@ -22,6 +25,15 @@ def main():
                 continue
 
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            
+            results = model.predict(frame, classes=[0])
+            
+            for result in results:
+                for box in result.boxes:
+                    x1,y1,x2,y2 = map(int, box.xyxy[0])
+                    cv2.rectangle(frame, (x1,y1), (x2,y2), (0, 255, 0), 2)
+            
+            
             cv2.imshow("Tello Video Stream", frame)
 
             # 프레임 속도 조절 (옵션)
